@@ -1,6 +1,3 @@
-Below is a clean, merged and polished README that incorporates the fourth architecture — Native-HA (Raft) 3-node + HAProxy VIP — alongside your existing three. I also tightened a few tables and anchors so it reads like a commercial-grade doc.
-
-⸻
 
 IBM MQ Lab Architectures (Containers)
 
