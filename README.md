@@ -1,5 +1,15 @@
 # ibmMQArchitecture
 ---
+# Architectural Overview of Three IBM MQ Designs
+
+## Table of Contents
+
+* [A) Multiple Standalone IBM MQ Queue Managers](#a-multiple-standalone-ibm-mq-queue-managers)
+* [B) IBM MQ Managed File Transfer (MFT) Lab](#b-ibm-mq-managed-file-transfer-mft-lab)
+* [C) Multi-Instance Queue Manager (MI) — Active/Standby + VIP](#c-multi-instance-queue-manager-mi--activestandby--vip)
+* [General Notes — Education/Concept Only (Not Production)](#general-notes--educationconcept-only-not-production)
+
+---
 
 # A) Multiple Standalone IBM MQ Queue Managers
 
@@ -148,11 +158,9 @@ flowchart LR
 
 ---
 
-## General Notes — **Education/Concept Only (Not Production)**
+## General Notes — Education/Concept Only (Not Production)
 
 * These designs are **teaching aids**: they show how components relate and how flows work, but they **intentionally omit** enterprise-grade controls (PKI/TLS, CHLAUTH hardening, LDAP/OIDC, secrets management, SIEM, backup, SRE runbooks).
 * **Container storage** choices in demos (local bind paths, simple NFS) do **not** reflect production durability, latency, or compliance requirements.
 * **Networking** here is the default Docker bridge; no east-west firewalls, no VRRP/VIP floating IPs, no multi-AZ placement.
 * **Operational behavior** (failover promotion, channel auth rules, agent file paths) is simplified to make the flows visible and repeatable in a lab.
-
-If you’d like, I can bundle these Mermaid diagrams and notes into a single `README.md` (or an **architect’s one-pager PDF**) with a quick-start “Try it” section for each pattern.
