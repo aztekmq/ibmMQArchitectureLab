@@ -1,0 +1,68 @@
+version: '3.8'
+services:
+  qm1:
+    image: ibmcom/mq
+    container_name: qm1
+    environment:
+      - LICENSE=accept
+      - MQ_QMGR_NAME=QM1
+      - MQ_APP_PASSWORD=passw0rd
+      - MQ_ENABLE_METRICS=true
+      - MQ_ENABLE_ADMIN_WEB=true
+    ports:
+      - "1415:1414"
+      - "9444:9443"
+      - "9450:9449"
+    volumes:
+      - ./data/QM1:/mnt/mqm
+    healthcheck:
+      test: ["CMD", "mqcli", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+ 
+  qm2:
+    image: ibmcom/mq
+    container_name: qm2
+    environment:
+      - LICENSE=accept
+      - MQ_QMGR_NAME=QM2
+      - MQ_APP_PASSWORD=passw0rd
+      - MQ_ENABLE_METRICS=true
+      - MQ_ENABLE_ADMIN_WEB=true
+    ports:
+      - "1416:1414"
+      - "9445:9443"
+      - "9451:9449"
+    volumes:
+      - ./data/QM2:/mnt/mqm
+    healthcheck:
+      test: ["CMD", "mqcli", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+ 
+  qm3:
+    image: ibmcom/mq
+    container_name: qm3
+    environment:
+      - LICENSE=accept
+      - MQ_QMGR_NAME=QM3
+      - MQ_APP_PASSWORD=passw0rd
+      - MQ_ENABLE_METRICS=true
+      - MQ_ENABLE_ADMIN_WEB=true
+    ports:
+      - "1417:1414"
+      - "9446:9443"
+      - "9452:9449"
+    volumes:
+      - ./data/QM3:/mnt/mqm
+    healthcheck:
+      test: ["CMD", "mqcli", "status"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+ 
