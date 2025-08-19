@@ -1,6 +1,5 @@
-Below is a clean, **merged** and **polished** README that incorporates the **fourth architecture** — **Native-HA (Raft) 3-node + HAProxy VIP** — alongside your existing three. I also tightened a few tables and # IBM MQ Lab Architectures (Containers)
 
-> **Status:** Lab / Proof-of-Concept • **Scope:** Education & Demos only • **License:** MIT
+**Status:** Lab / Proof-of-Concept • **Scope:** Education & Demos only • **License:** MIT
 
 This repository describes and automates four containerized IBM MQ architectures for **hands-on learning**, prototyping, and demos. They intentionally favor **clarity over hardening** and are **not intended for production**.
 
