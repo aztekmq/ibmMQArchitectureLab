@@ -1,43 +1,144 @@
-# Architectural Overview of Three IBM MQ Designs
+Below is a clean, merged and polished README that incorporates the fourth architecture — Native-HA (Raft) 3-node + HAProxy VIP — alongside your existing three. I also tightened a few tables and anchors so it reads like a commercial-grade doc.
 
-## Table of Contents
+⸻
 
-* [A) Multiple Standalone IBM MQ Queue Managers](#a-multiple-standalone-ibm-mq-queue-managers)
-* [B) IBM MQ Managed File Transfer (MFT) Lab](#b-ibm-mq-managed-file-transfer-mft-lab)
-* [C) Multi-Instance Queue Manager (MI) — Active/Standby + VIP](#c-multi-instance-queue-manager-mi--activestandby--vip)
-* [General Notes — Education/Concept Only (Not Production)](#general-notes--educationconcept-only-not-production)
+IBM MQ Lab Architectures (Containers)
 
----
+Status: Lab / Proof-of-Concept • Scope: Education & Demos only • License: MIT
 
-# A) Multiple Standalone IBM MQ Queue Managers
+This repository describes and automates four containerized IBM MQ architectures for hands-on learning, prototyping, and demos. They intentionally favor clarity over hardening and are not intended for production.
 
-### Purpose
+⸻
 
-Spin up **N independent queue managers** for workshops, demos, and API exploration (Admin Web + REST), each with its own persistent volume.
+Table of Contents
+	•	Overview
+	•	Audience & Use Cases
+	•	Prerequisites
+	•	File Map
+	•	Quick Start
+	•	A) Multiple Standalone IBM MQ Queue Managers
+	•	Scripts (Standalone)
+	•	B) IBM MQ Managed File Transfer (MFT) Lab
+	•	Scripts (MFT)
+	•	C) Multi-Instance Queue Manager (MI) — Active/Standby + VIP
+	•	Scripts (MI + VIP)
+	•	D) Native-HA Queue Manager (Raft) — 3-Node + VIP
+	•	Scripts (Native-HA + VIP)
+	•	Security & Compliance Notice
+	•	Troubleshooting
+	•	Cleanup
+	•	License
 
-### Scope
+⸻
 
-* One Docker host and network.
-* Each QM runs its own listener (1414) and optional Admin Web (9443) / REST Admin (9449).
-* No HA/DR or cross-QM clustering implied.
+Overview
 
-### Caveats (container-based)
+Four designs are provided:
+	1.	Standalone QMs — spin up N independent queue managers for API experiments and admin demos.
+	2.	MFT Domain — canonical IBM MQ Managed File Transfer setup with Coordination, Command, and two Agents.
+	3.	Multi-Instance (MI) QM + VIP — one queue manager identity with Active/Standby containers on shared storage and an optional TCP VIP (HAProxy).
+	4.	Native-HA (Raft) QM + VIP — one queue manager identity distributed across three containers using MQ’s built-in Raft replication; optional VIP provides a stable client endpoint.
 
-* Ephemeral networking; no service discovery beyond Docker DNS.
-* Local volumes ≠ enterprise storage (I/O latency & durability vary).
-* Default CHLAUTH/channel settings in labs are permissive; **not secure**.
-* No TLS, SIEM integration, or formal capacity/SLOs.
+All designs run on a single Docker host and default bridge network for simplicity.
 
-### Scripts (this design)
+⸻
 
-| Script                    | Role                                         | Key behaviors                                                                                                                                        | Important vars                                                                                                             | Quick use                                                                                 |
-| ------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| `build_mq_qmgrs.sh`       | Provision **N standalone QMs** in containers | Port conflict checks; generates `docker-compose.yml`; creates `./data/QM*`; exposes **1414 / 9443 / 9449** per QM; starts containers; prints summary | `NUM_QMGRS` (positional), `IMAGE_NAME`, `BASE_LISTENER_PORT=1414`, `BASE_WEB_PORT=9443`, `BASE_REST_PORT=9449`, `DATA_DIR` | `./build_mq_qmgrs.sh 3` → brings up `QM1..QM3`; connect to `localhost:1415/1416/…` (etc.) |
-| *(no dedicated verifier)* | —                                            | Use `dspmq`, Admin Web, or REST to validate                                                                                                          | —                                                                                                                          | `docker exec qm1 dspmq -o status`; browse `https://localhost:<web-port>`                  |
+Audience & Use Cases
+	•	Architects and engineers learning IBM MQ topology options.
+	•	Developers testing client configuration, reconnection, and admin interfaces.
+	•	Pre-sales enablement and workshop labs.
 
-> **Cleanup:** `docker compose down --remove-orphans && sudo rm -rf ./data`
+Not for production: These patterns do not implement enterprise security, durability, or SRE operational guardrails.
 
-```mermaid
+⸻
+
+Prerequisites
+	•	Docker Engine and Docker Compose v2 (docker compose …)
+	•	Host OS with bash and ss (or netstat)
+	•	Images:
+	•	MQ base image for Standalone, MI, and Native-HA
+	•	MQ Advanced (MFT) image for the MFT lab (/opt/mqm/mqft/bin must exist)
+
+⸻
+
+File Map
+
+# A: Standalone
+build_mq_qmgrs.sh
+
+# B: MFT
+build_mq_mft_qmgrs.sh
+verify_mft.sh
+
+# C: MI (Active/Standby) + optional VIP
+build_mq_mi_qmgrs.sh
+promote_standby.sh
+verify_mi.sh
+docker-compose.vip.yml          # generated (MI variant)
+haproxy/haproxy.cfg             # generated (MI variant)
+Makefile                        # generated (MI variant)
+
+# D: Native-HA (Raft) 3-node + VIP
+build_mq_nativeha.sh            # generates docker-compose.nha.yml + VIP stack + Makefile
+verify_nativeha.sh
+docker-compose.nha.yml          # generated by builder
+docker-compose.vip.yml          # generated (Native-HA variant)
+haproxy/haproxy.cfg             # generated (Native-HA variant)
+Makefile                        # generated (Native-HA variant)
+
+
+⸻
+
+Quick Start
+
+# A) Standalone QMs
+chmod +x build_mq_qmgrs.sh
+./build_mq_qmgrs.sh 3
+
+# B) MFT Lab (requires MQ Advanced image)
+chmod +x build_mq_mft_qmgrs.sh
+./build_mq_mft_qmgrs.sh
+./verify_mft.sh
+
+# C) MIQM + VIP
+chmod +x build_mq_mi_qmgrs.sh
+./build_mq_mi_qmgrs.sh
+./verify_mi.sh
+# If VIP artifacts were generated:
+make vip-up
+
+# D) Native-HA (Raft) 3-node + VIP
+chmod +x build_mq_nativeha.sh
+./build_mq_nativeha.sh
+make vip-up            # starts HAProxy VIP for Native-HA
+./verify_nativeha.sh
+# Optional failover simulation:
+./verify_nativeha.sh --simulate-failover
+
+
+⸻
+
+A) Multiple Standalone IBM MQ Queue Managers
+
+Purpose
+
+Start N independent queue managers for workshops, demos, and REST/Admin exploration—each with its own data volume.
+
+Scope
+	•	Single Docker host & bridge network.
+	•	Each QM exposes 1414 (listener), optional 9443 (Admin Web), 9449 (Admin REST).
+	•	No clustering, HA, or DR implied.
+
+Caveats (container-based)
+	•	Lab-level CHLAUTH defaults (permissive), no TLS; not secure.
+	•	Local/bind storage durability and latency vary by host.
+	•	No service discovery beyond Docker DNS.
+
+Scripts (Standalone)
+
+Script	Role	Key Behaviors	Important Vars	Quick Use
+build_mq_qmgrs.sh	Provision N standalone QMs	Port checks; generates docker-compose.yml; creates ./data/QM*; maps 1414/9443/9449; starts containers; prints summary	NUM_QMGRS (positional), IMAGE_NAME, BASE_LISTENER_PORT=1414, BASE_WEB_PORT=9443, BASE_REST_PORT=9449, DATA_DIR	./build_mq_qmgrs.sh 3 → QM1..QM3
+
 flowchart LR
   subgraph Host["Docker Host (single)"]
     direction LR
@@ -48,51 +149,39 @@ flowchart LR
       QMn["qmN : QMN\n…"] --- Vn[("Vol: ./data/QMN")]
     end
   end
+  Clients((Clients/Tools)) -->|MQI/JMS| QM1
+  Clients --> QM2
+  Clients --> QMn
+  Admin[[Admin UI/REST]] --> QM1
+  Admin --> QM2
+  Admin --> QMn
 
-  Clients((Clients / Tools))
-  Admin[[Admin UI / REST]]
 
-  Clients -->|MQI/JMS\nSVRCONN| QM1
-  Clients -->|MQI/JMS\nSVRCONN| QM2
-  Clients -->|...| QMn
+⸻
 
-  Admin -->|HTTPS 9443 / 9449| QM1
-  Admin -->|HTTPS 9443 / 9449| QM2
-  Admin -->|...| QMn
-```
+B) IBM MQ Managed File Transfer (MFT) Lab
 
----
+Purpose
 
-# B) IBM MQ Managed File Transfer (MFT) Lab
+Show a reference MFT domain with Coordination, Command, and two Agents: one local to a QM and one agent-only container using the MQ client.
 
-### Purpose
+Scope
+	•	QMCOORD hosts Coordination.
+	•	QMCMD hosts Command.
+	•	QMAGENT hosts Agent Server + AGENT_LCL.
+	•	mftagent runs AGENT_REM (no QM; connects to QMAGENT).
 
-Demonstrate a canonical **MFT domain** with **Coordination**, **Command**, and **Agents** (one agent co-located with a QM; one **agent-only** container using MQ client).
+Caveats (container-based)
+	•	Requires MQ Advanced (MFT) image.
+	•	DEV channel (DEV.APP.SVRCONN) and relaxed CHLAUTH for labs; tighten in prod.
+	•	File paths are container filesystems; no enterprise file governance.
 
-### Scope
+Scripts (MFT)
 
-* `QMCOORD` hosts **Coordination** repository.
-* `QMCMD` hosts **Command** services.
-* `QMAGENT` hosts **Agent Server** and local agent `AGENT_LCL`.
-* `mftagent` runs **`AGENT_REM`** (no QM; connects to `QMAGENT` via SVRCONN).
+Script	Role	Key Behaviors	Important Vars	Quick Use
+build_mq_mft_qmgrs.sh	Provision 4-container MFT lab	Creates QMs & agent-only container; defines DEV listener/channel; sets up Coordination/Command; creates & starts AGENT_LCL and AGENT_REM; prints summary	IMAGE_NAME/TAG (must include MFT), COORD_QM, CMD_QM, AGENT_QM, MFT_DOMAIN, AGENT_LOCAL_NAME, AGENT_REMOTE_NAME, PORT_*, MQ_ADMIN_PASSWORD, MQ_APP_PASSWORD	./build_mq_mft_qmgrs.sh
+verify_mft.sh	End-to-end MFT smoke test	Prepares files; runs fteCreateTransfer REM→LCL; validates contents; optional reverse/wildcard tests; tails agent logs on error	CMD_CNAME, COORD_CNAME, AGENT_CNAME, REM_CNAME, DOMAIN, AGENT_LCL, AGENT_REM	./verify_mft.sh
 
-### Caveats (container-based)
-
-* Requires an **MQ Advanced** image (MFT CLI under `/opt/mqm/mqft/bin`).
-* Lab uses **DEV.APP.SVRCONN** and relaxed CHLAUTH; **do not** reuse in prod.
-* No TLS or enterprise auth; file paths are container filesystems.
-* Single network / single host — no DR, no hardened storage.
-
-### Scripts (this design)
-
-| Script                  | Role                              | Key behaviors                                                                                                                                                                                               | Important vars                                                                                                                                                                     | Quick use                                                  |
-| ----------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `build_mq_mft_qmgrs.sh` | Provision **4-container MFT lab** | Creates QMs (`QMCOORD`, `QMCMD`, `QMAGENT`) and agent-only container; defines DEV listener/channel; sets up **Coordination** & **Command**; creates/starts agents `AGENT_LCL` & `AGENT_REM`; prints summary | `IMAGE_NAME/TAG` (must include **MFT**), `COORD_QM`, `CMD_QM`, `AGENT_QM`, `MFT_DOMAIN`, `AGENT_LOCAL_NAME`, `AGENT_REMOTE_NAME`, `PORT_*`, `MQ_ADMIN_PASSWORD`, `MQ_APP_PASSWORD` | `./build_mq_mft_qmgrs.sh`                                  |
-| `verify_mft.sh`         | **End-to-end MFT smoke test**     | Creates sample files; runs `fteCreateTransfer` **REM→LCL**; verifies contents; optional **reverse** and **wildcard** transfers; tails agent logs                                                            | `CMD_CNAME`, `COORD_CNAME`, `AGENT_CNAME`, `REM_CNAME`, `DOMAIN`, `AGENT_LCL`, `AGENT_REM`                                                                                         | `./verify_mft.sh` · `./verify_mft.sh --reverse --wildcard` |
-
-> **Cleanup:** `docker compose down --remove-orphans && sudo rm -rf ./data ./mft`
-
-```mermaid
 flowchart LR
   subgraph Net["Docker Network"]
     direction TB
@@ -101,86 +190,157 @@ flowchart LR
     QMAGENT["qmagent : QMAGENT\nAgent Server + AGENT_LCL"]:::qm
     AGENTREM["mftagent : AGENT_REM\n(no QM; MQ client)"]:::agent
   end
-
-  style QMCOORD fill:#f3f7ff,stroke:#6b8cff
-  style QMCMD fill:#f3f7ff,stroke:#6b8cff
-  style QMAGENT fill:#f3f7ff,stroke:#6b8cff
-  classDef qm stroke:#6b8cff,fill:#eef3ff,color:#222,stroke-width:1.2px
-  classDef agent stroke:#7c4dff,fill:#f7f2ff,color:#222,stroke-width:1.2px
-
+  classDef qm stroke:#6b8cff,fill:#eef3ff
+  classDef agent stroke:#7c4dff,fill:#f7f2ff
   AGENT_LCL[[AGENT_LCL]]:::agent --> QMAGENT
   AGENT_REM[[AGENT_REM]]:::agent --> AGENTREM
-
   AGENT_LCL -.register/status.-> QMCOORD
   AGENT_REM -.register/status.-> QMCOORD
-  QMCMD -->|fteCreateTransfer\nfteListMonitors| QMCOORD
-  QMCMD -->|agent commands| AGENT_LCL
-  QMCMD -->|agent commands| AGENT_REM
-  AGENTREM -->|SVRCONN\nqmagent:1414| QMAGENT
+  QMCMD -->|fteCreateTransfer/Monitors| QMCOORD
+  QMCMD --> AGENT_LCL
+  QMCMD --> AGENT_REM
+  AGENTREM -->|SVRCONN qmagent:1414| QMAGENT
   AGENT_REM ===>|file copy| AGENT_LCL
-```
 
----
 
-# C) Multi-Instance Queue Manager (MI) — Active/Standby + VIP
+⸻
 
-### Purpose
+C) Multi-Instance Queue Manager (MI) — Active/Standby + VIP
 
-Illustrate **MIQM** behavior: one **ACTIVE** instance and one **STANDBY** reading the **same shared storage** (POSIX-locking NFS/EFS). Optional **VIP** (HAProxy) points clients to the active node.
+Purpose
 
-### Scope
+Demonstrate MIQM: one ACTIVE and one STANDBY instance sharing the same POSIX-locking storage (e.g., NFSv4/EFS). Optional VIP (HAProxy) presents a stable TCP endpoint.
 
-* Single QM identity (e.g., `QM1`) across two containers.
-* Both mount **the same** `/mnt/mqm` share; only ACTIVE opens the listener.
-* HAProxy offers a **stable TCP endpoint** that follows the active.
+Scope
+	•	Single QM identity (e.g., QM1) across two containers.
+	•	Both mount the same /mnt/mqm; only the ACTIVE opens the listener.
+	•	HAProxy checks TCP and routes to the ACTIVE.
 
-### Caveats (container-based)
+Caveats (container-based)
+	•	Storage must support byte-range locking (NFSv4); misconfig can cause failover issues.
+	•	Standby has no listener; health inferred via TCP.
+	•	RDQM isn’t supported in vanilla containers.
 
-* **Shared storage must support locking** (NFSv4). Misconfigured NFS can cause failover issues or data risk.
-* Standby shouldn’t run a listener; health is inferred via TCP checks.
-* No RDQM (kernel modules) in standard containers.
-* One host / bridge network; not a full production HA design (no multi-AZ, no VIP failover IP/VRRP).
+Scripts (MI + VIP)
 
-### Scripts (this design)
+Script	Role	Key Behaviors	Important Vars	Quick Use
+build_mq_mi_qmgrs.sh	Provision 1 ACTIVE + 1 STANDBY MIQM	Creates QM1 on shared storage (bind or NFS); starts ACTIVE on qm1a (strmqm QM1) and STANDBY on qm1b (strmqm -x QM1); defines DEV channel/listener; prints ports. VIP-integrated variant also generates docker-compose.vip.yml, haproxy/haproxy.cfg, and a Makefile.	IMAGE_NAME/TAG, QM_NAME, PORT_ACTIVE, PORT_STANDBY, NFS_SERVER, NFS_EXPORT	./build_mq_mi_qmgrs.sh
+promote_standby.sh	Controlled role swap	Ends current ACTIVE (immediate/quiesce), waits for promotion, restarts old active as STANDBY	A_CNAME, B_CNAME, QM_NAME, `MODE=immediate	quiesce, TIMEOUT`
+verify_mi.sh	MI-only verifier	Confirms roles; verifies shared storage hash (qm.ini); checks TCP behavior (active accepts / standby refuses); optional VIP probe; optional failover simulation	MI_A, MI_B, QM_NAME, PORT_ACTIVE, PORT_STANDBY, VIP_*	./verify_mi.sh
+(VIP artifacts)	Optional VIP (HAProxy)	docker-compose.vip.yml + haproxy/haproxy.cfg + Makefile targets: vip-up, vip-down, promote, status	VIP_PORT (default 14150), VIP_STATS_PORT, VIP_USER, VIP_PASS	make vip-up
 
-| Script                 | Role                                    | Key behaviors                                                                                                                                                                                                                                                                                    | Important vars                                                                                        | Quick use                                                  |                                                                          |
-| ---------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `build_mq_mi_qmgrs.sh` | Provision **1 ACTIVE + 1 STANDBY** MIQM | Creates `QM1` on shared storage (bind or NFS); starts **ACTIVE** on `qm1a` (`strmqm QM1`) and **STANDBY** on `qm1b` (`strmqm -x QM1`); defines DEV channel/listener; prints ports; *(if using VIP-integrated variant, also emits `docker-compose.vip.yml` + `haproxy/haproxy.cfg` + `Makefile`)* | `IMAGE_NAME/TAG`, `QM_NAME`, `PORT_ACTIVE`, `PORT_STANDBY`, `NFS_SERVER`, `NFS_EXPORT` (for NFS mode) | `./build_mq_mi_qmgrs.sh`                                   |                                                                          |
-| `promote_standby.sh`   | **Controlled role swap**                | Ends the current ACTIVE (immediate/quiesce), **waits for promotion**, then restarts old active as STANDBY                                                                                                                                                                                        | `A_CNAME=qm1a`, `B_CNAME=qm1b`, `QM_NAME=QM1`, \`MODE=immediate                                       | quiesce`, `TIMEOUT\`                                       | `./promote_standby.sh` · `./promote_standby.sh --to qm1b --mode quiesce` |
-| `verify_mi.sh`         | **MI-only verifier**                    | Confirms roles (ACTIVE/STANDBY); verifies **shared storage** (hash of `qm.ini`); checks **TCP** behavior (active accepts, standby refuses); optional VIP checks; optional failover simulation                                                                                                    | `MI_A`, `MI_B`, `QM_NAME`, `PORT_ACTIVE`, `PORT_STANDBY`, `VIP_*`                                     | `./verify_mi.sh` · `./verify_mi.sh --simulate-failover`    |                                                                          |
-| *(VIP files)*          | Optional **VIP** (HAProxy)              | If generated: `docker-compose.vip.yml` + `haproxy/haproxy.cfg` + `Makefile` targets `vip-up` / `vip-down` / `promote` / `status`                                                                                                                                                                 | `VIP_PORT` (default **14150**), `VIP_STATS_PORT`, `VIP_USER`, `VIP_PASS`                              | `make vip-up` → connect clients to `localhost:${VIP_PORT}` |                                                                          |
-
-> **Cleanup:** `docker compose down --remove-orphans && rm -f docker-compose.vip.yml && rm -rf haproxy && sudo rm -rf ./shared` (⚠️ last step erases QM data)
-
-```mermaid
 flowchart LR
-  Client((Clients)) -- MQI/JMS --> VIP[[HAProxy VIP\n:14150]]
-
+  Client((Clients)) -- MQI/JMS --> VIP[[HAProxy VIP :14150]]
   subgraph Containers
     direction LR
     A["qm1a : QM1 (ACTIVE)\nListener 1414"]:::active
     B["qm1b : QM1 (STANDBY)\nNo listener"]:::standby
   end
-
   subgraph Storage["Shared Storage (NFSv4/EFS)\nPOSIX byte-range locks required"]
     VOL[("/mnt/mqm : QM1 data + logs")]
+  end
+  VIP -->|tcp| A
+  VIP -.failover.-> B
+  A --- VOL
+  B --- VOL
+  classDef active stroke:#28a745,fill:#eaffea
+  classDef standby stroke:#c0a000,fill:#fffbe6
+
+
+⸻
+
+D) Native-HA Queue Manager (Raft) — 3-Node + VIP
+
+Note: RDQM relies on kernel modules and is not supported in containers. This lab uses IBM MQ’s Native-HA (Raft) — supported for container learning and demos.
+
+Purpose
+
+Demonstrate MQ’s Native-HA (Raft) with three containers forming one queue manager identity (one Active, two Replica). An optional HAProxy VIP provides a single, stable client endpoint that always targets the Active.
+
+Scope
+	•	Three containers (e.g., qmha-a, qmha-b, qmha-c) each hosting a local instance of the same queue manager (e.g., QMHA).
+	•	Raft replicates log/state across nodes; one Active at a time, two Replicas.
+	•	HAProxy health-checks MQ TCP and forwards clients to the current Active.
+
+Caveats (container-based)
+	•	Lab defaults: open DEV channel, no TLS, simple passwords; not secure.
+	•	Intended for on-host demos; for supported production, use Kubernetes/OpenShift with the MQ Operator.
+
+Scripts (Native-HA + VIP)
+
+Script	Role	Key Behaviors	Important Vars	Quick Use
+build_mq_nativeha.sh	Provision 3-node Native-HA QM + generate VIP	Creates qmha-a/b/c with MQ_NATIVE_HA=true; writes INI fragments under /etc/mqm for Raft peers; opens DEV listener; generates VIP stack (docker-compose.vip.yml, haproxy/haproxy.cfg) and a Makefile	IMAGE_NAME/TAG, QM_NAME (default QMHA), per-node host ports (PORT_A/B/C), REPL_PORT, VIP_PORT (default 14180), VIP_STATS_PORT, VIP_USER, VIP_PASS	./build_mq_nativeha.sh then make vip-up
+verify_nativeha.sh	Native-HA + VIP verifier	Confirms roles (Active/Replica), checks per-node listener behavior, verifies VIP TCP; performs client put/get via VIP; optional failover simulation and recheck	PORT_A/B/C, VIP_PORT, VIP_NAME	./verify_nativeha.sh · ./verify_nativeha.sh --simulate-failover
+(VIP artifacts)	Optional VIP (HAProxy)	docker-compose.vip.yml + haproxy/haproxy.cfg + Makefile targets: vip-up, vip-down, vip-reload, status, verify, failover	VIP_PORT (default 14180), VIP_STATS_PORT, VIP_USER, VIP_PASS	make vip-up
+
+flowchart LR
+  Client((Clients)) -- MQI/JMS --> VIP[[HAProxy VIP :14180]]
+
+  subgraph Cluster["Native-HA (Raft) Group"]
+    direction LR
+    A["qmha-a : QMHA\nROLE: Active/Replica\nListener 1414"]:::nha
+    B["qmha-b : QMHA\nROLE: Replica\nNo listener"]:::nha
+    C["qmha-c : QMHA\nROLE: Replica\nNo listener"]:::nha
   end
 
   VIP -->|tcp| A
   VIP -.failover.-> B
+  VIP -.failover.-> C
 
-  A --- VOL
-  B --- VOL
+  A <-. Raft Replication .-> B
+  A <-. Raft Replication .-> C
+  B <-. Raft Replication .-> C
 
-  classDef active stroke:#28a745,fill:#eaffea,stroke-width:1.4px,color:#1e4620
-  classDef standby stroke:#c0a000,fill:#fffbe6,stroke-width:1.2px,color:#4d3b00
-```
+  classDef nha stroke:#0d6efd,fill:#eef5ff,stroke-width:1.2px
 
----
 
-## General Notes — Education/Concept Only (Not Production)
+⸻
 
-* These designs are **teaching aids**: they show how components relate and how flows work, but they **intentionally omit** enterprise-grade controls (PKI/TLS, CHLAUTH hardening, LDAP/OIDC, secrets management, SIEM, backup, SRE runbooks).
-* **Container storage** choices in demos (local bind paths, simple NFS) do **not** reflect production durability, latency, or compliance requirements.
-* **Networking** here is the default Docker bridge; no east-west firewalls, no VRRP/VIP floating IPs, no multi-AZ placement.
-* **Operational behavior** (failover promotion, channel auth rules, agent file paths) is simplified to make the flows visible and repeatable in a lab.
+Security & Compliance Notice
+
+These assets are educational. They intentionally use permissive channel rules, no TLS, and simple credentials for approachability. For any environment beyond a lab:
+	•	Enforce TLS on channels and admin endpoints; use managed PKI.
+	•	Replace DEV channels & CHLAUTH relaxations with least-privilege mappings.
+	•	Integrate identity (LDAP/OIDC), logging (SIEM), backup/restore, monitoring/alerting.
+	•	Use durable, compliant storage and multi-AZ/host HA patterns appropriate to your risk profile.
+
+⸻
+
+Troubleshooting
+	•	Ports in use → Adjust PORT_* variables or stop conflicting services.
+	•	MFT CLI missing → Use an MQ Advanced image; verify /opt/mqm/mqft/bin.
+	•	MI failover doesn’t occur → Verify NFSv4 with locking; both MI containers must mount the same path; check AMQERR01.LOG.
+	•	Native-HA roles don’t settle → Check INI fragments under /etc/mqm, container hostnames (must match Raft peer entries), and container network reachability on the replication port.
+	•	VIP not routing to Active → Confirm HAProxy is up (make status) and that only the Active is listening on 1414; check haproxy/haproxy.cfg health-checks.
+
+⸻
+
+Cleanup
+
+# General
+docker compose down --remove-orphans
+
+# Standalone
+sudo rm -rf ./data
+
+# MFT
+sudo rm -rf ./data ./mft
+
+# MI + VIP
+make vip-down || true
+rm -f docker-compose.vip.yml
+rm -rf haproxy
+sudo rm -rf ./shared   # ⚠️ deletes MIQM data
+
+# Native-HA + VIP
+make vip-down || true
+rm -f docker-compose.nha.yml docker-compose.vip.yml
+rm -rf haproxy
+sudo rm -rf ./nha      # ⚠️ deletes Native-HA data for all three nodes
+
+
+⸻
+
+License
+
+MIT © rob lee. See script headers for SPDX identifiers.
