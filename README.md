@@ -1,7 +1,3 @@
-Below I’ve added a new **Scripts** subsection to each architecture in your README. It summarizes what each script does, key variables, and quick commands.
-
----
-
 # Architectural Overview of Three IBM MQ Designs
 
 ## Table of Contents
