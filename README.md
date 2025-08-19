@@ -1,5 +1,3 @@
-# ibmMQArchitecture
----
 # Architectural Overview of Three IBM MQ Designs
 
 ## Table of Contents
