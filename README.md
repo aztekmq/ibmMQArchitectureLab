@@ -1,3 +1,7 @@
+Below I’ve added a new **Scripts** subsection to each architecture in your README. It summarizes what each script does, key variables, and quick commands.
+
+---
+
 # Architectural Overview of Three IBM MQ Designs
 
 ## Table of Contents
@@ -27,6 +31,15 @@ Spin up **N independent queue managers** for workshops, demos, and API explorati
 * Local volumes ≠ enterprise storage (I/O latency & durability vary).
 * Default CHLAUTH/channel settings in labs are permissive; **not secure**.
 * No TLS, SIEM integration, or formal capacity/SLOs.
+
+### Scripts (this design)
+
+| Script                    | Role                                         | Key behaviors                                                                                                                                        | Important vars                                                                                                             | Quick use                                                                                 |
+| ------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `build_mq_qmgrs.sh`       | Provision **N standalone QMs** in containers | Port conflict checks; generates `docker-compose.yml`; creates `./data/QM*`; exposes **1414 / 9443 / 9449** per QM; starts containers; prints summary | `NUM_QMGRS` (positional), `IMAGE_NAME`, `BASE_LISTENER_PORT=1414`, `BASE_WEB_PORT=9443`, `BASE_REST_PORT=9449`, `DATA_DIR` | `./build_mq_qmgrs.sh 3` → brings up `QM1..QM3`; connect to `localhost:1415/1416/…` (etc.) |
+| *(no dedicated verifier)* | —                                            | Use `dspmq`, Admin Web, or REST to validate                                                                                                          | —                                                                                                                          | `docker exec qm1 dspmq -o status`; browse `https://localhost:<web-port>`                  |
+
+> **Cleanup:** `docker compose down --remove-orphans && sudo rm -rf ./data`
 
 ```mermaid
 flowchart LR
@@ -74,6 +87,15 @@ Demonstrate a canonical **MFT domain** with **Coordination**, **Command**, and *
 * No TLS or enterprise auth; file paths are container filesystems.
 * Single network / single host — no DR, no hardened storage.
 
+### Scripts (this design)
+
+| Script                  | Role                              | Key behaviors                                                                                                                                                                                               | Important vars                                                                                                                                                                     | Quick use                                                  |
+| ----------------------- | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `build_mq_mft_qmgrs.sh` | Provision **4-container MFT lab** | Creates QMs (`QMCOORD`, `QMCMD`, `QMAGENT`) and agent-only container; defines DEV listener/channel; sets up **Coordination** & **Command**; creates/starts agents `AGENT_LCL` & `AGENT_REM`; prints summary | `IMAGE_NAME/TAG` (must include **MFT**), `COORD_QM`, `CMD_QM`, `AGENT_QM`, `MFT_DOMAIN`, `AGENT_LOCAL_NAME`, `AGENT_REMOTE_NAME`, `PORT_*`, `MQ_ADMIN_PASSWORD`, `MQ_APP_PASSWORD` | `./build_mq_mft_qmgrs.sh`                                  |
+| `verify_mft.sh`         | **End-to-end MFT smoke test**     | Creates sample files; runs `fteCreateTransfer` **REM→LCL**; verifies contents; optional **reverse** and **wildcard** transfers; tails agent logs                                                            | `CMD_CNAME`, `COORD_CNAME`, `AGENT_CNAME`, `REM_CNAME`, `DOMAIN`, `AGENT_LCL`, `AGENT_REM`                                                                                         | `./verify_mft.sh` · `./verify_mft.sh --reverse --wildcard` |
+
+> **Cleanup:** `docker compose down --remove-orphans && sudo rm -rf ./data ./mft`
+
 ```mermaid
 flowchart LR
   subgraph Net["Docker Network"]
@@ -93,19 +115,12 @@ flowchart LR
   AGENT_LCL[[AGENT_LCL]]:::agent --> QMAGENT
   AGENT_REM[[AGENT_REM]]:::agent --> AGENTREM
 
-  %% Agent registration & status with Coordination
   AGENT_LCL -.register/status.-> QMCOORD
   AGENT_REM -.register/status.-> QMCOORD
-
-  %% Commands and monitoring flow
   QMCMD -->|fteCreateTransfer\nfteListMonitors| QMCOORD
   QMCMD -->|agent commands| AGENT_LCL
   QMCMD -->|agent commands| AGENT_REM
-
-  %% MQ client path from agent-only container to QMAGENT
   AGENTREM -->|SVRCONN\nqmagent:1414| QMAGENT
-
-  %% Data movement (conceptual)
   AGENT_REM ===>|file copy| AGENT_LCL
 ```
 
@@ -129,6 +144,17 @@ Illustrate **MIQM** behavior: one **ACTIVE** instance and one **STANDBY** readin
 * Standby shouldn’t run a listener; health is inferred via TCP checks.
 * No RDQM (kernel modules) in standard containers.
 * One host / bridge network; not a full production HA design (no multi-AZ, no VIP failover IP/VRRP).
+
+### Scripts (this design)
+
+| Script                 | Role                                    | Key behaviors                                                                                                                                                                                                                                                                                    | Important vars                                                                                        | Quick use                                                  |                                                                          |
+| ---------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `build_mq_mi_qmgrs.sh` | Provision **1 ACTIVE + 1 STANDBY** MIQM | Creates `QM1` on shared storage (bind or NFS); starts **ACTIVE** on `qm1a` (`strmqm QM1`) and **STANDBY** on `qm1b` (`strmqm -x QM1`); defines DEV channel/listener; prints ports; *(if using VIP-integrated variant, also emits `docker-compose.vip.yml` + `haproxy/haproxy.cfg` + `Makefile`)* | `IMAGE_NAME/TAG`, `QM_NAME`, `PORT_ACTIVE`, `PORT_STANDBY`, `NFS_SERVER`, `NFS_EXPORT` (for NFS mode) | `./build_mq_mi_qmgrs.sh`                                   |                                                                          |
+| `promote_standby.sh`   | **Controlled role swap**                | Ends the current ACTIVE (immediate/quiesce), **waits for promotion**, then restarts old active as STANDBY                                                                                                                                                                                        | `A_CNAME=qm1a`, `B_CNAME=qm1b`, `QM_NAME=QM1`, \`MODE=immediate                                       | quiesce`, `TIMEOUT\`                                       | `./promote_standby.sh` · `./promote_standby.sh --to qm1b --mode quiesce` |
+| `verify_mi.sh`         | **MI-only verifier**                    | Confirms roles (ACTIVE/STANDBY); verifies **shared storage** (hash of `qm.ini`); checks **TCP** behavior (active accepts, standby refuses); optional VIP checks; optional failover simulation                                                                                                    | `MI_A`, `MI_B`, `QM_NAME`, `PORT_ACTIVE`, `PORT_STANDBY`, `VIP_*`                                     | `./verify_mi.sh` · `./verify_mi.sh --simulate-failover`    |                                                                          |
+| *(VIP files)*          | Optional **VIP** (HAProxy)              | If generated: `docker-compose.vip.yml` + `haproxy/haproxy.cfg` + `Makefile` targets `vip-up` / `vip-down` / `promote` / `status`                                                                                                                                                                 | `VIP_PORT` (default **14150**), `VIP_STATS_PORT`, `VIP_USER`, `VIP_PASS`                              | `make vip-up` → connect clients to `localhost:${VIP_PORT}` |                                                                          |
+
+> **Cleanup:** `docker compose down --remove-orphans && rm -f docker-compose.vip.yml && rm -rf haproxy && sudo rm -rf ./shared` (⚠️ last step erases QM data)
 
 ```mermaid
 flowchart LR
