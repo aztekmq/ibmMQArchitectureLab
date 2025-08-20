@@ -1,18 +1,3 @@
-Sweet — here’s a **single-shot verifier** that creates test files, runs an end-to-end transfer **AGENT\_REM → AGENT\_LCL**, verifies content, and (optionally) runs a reverse + wildcard transfer. It assumes the same container/QM/agent names from your build script.
-
-Save as `verify_mft.sh`, make executable, and run:
-
-```bash
-chmod +x verify_mft.sh
-./verify_mft.sh                 # forward transfer (REM -> LCL)
-./verify_mft.sh --reverse       # also do LCL -> REM reply
-./verify_mft.sh --wildcard      # also do REM -> LCL directory sync
-./verify_mft.sh --reverse --wildcard
-```
-
----
-
-```bash
 #!/usr/bin/env bash
 # =============================================================================
 # Script Name : verify_mft.sh
