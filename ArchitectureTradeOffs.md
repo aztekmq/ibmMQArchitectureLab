@@ -778,8 +778,6 @@ Below, patterns are named explicitly so you don’t need to cross‑reference nu
 
 ## Business Cases vs. IBM MQ **Lab** Architectures (Containers)
 
-> This section maps the 20 business applications (from Part I) to **four containerized lab architectures** you provided:
->
 > **A)** Standalone QMs · **B)** MFT Domain · **C)** Multi‑Instance (Active/Standby) + VIP · **D)** Native‑HA (Raft) + VIP.
 > These are **education/demo** patterns, not production‑hardened. Suitability ratings reflect **lab fit** and what they teach, with brief pros/cons.
 
@@ -812,7 +810,7 @@ Below, patterns are named explicitly so you don’t need to cross‑reference nu
 
 > **Notes**: Many of these production‑class use cases ultimately need enterprise security (TLS/AMS), governance, and platform SRE runbooks not present in the labs. The matrix indicates what each lab best **demonstrates** when teaching or prototyping.
 
-### Pros & Cons by Business Case and Lab Architecture
+### Pros & Cons by Business Case and Architecture
 
 Below, each business case lists short pros/cons for **A–D**. This format is **GitHub‑friendly** (headings + bullets) so it renders cleanly.
 
