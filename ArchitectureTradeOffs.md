@@ -814,127 +814,391 @@ Below, patterns are named explicitly so you don’t need to cross‑reference nu
 
 ### Pros & Cons by Business Case and Lab Architecture
 
-Below, each business case lists short pros/cons for **A–D** to clarify the ratings.
+Below, each business case lists short pros/cons for **A–D**. This format is **GitHub‑friendly** (headings + bullets) so it renders cleanly.
 
-1. **Core Banking Transactions**
-   • **A** △ — **Pros:** Simple dev/test for message flows. **Cons:** No HA/DR; not suitable for real SLAs.
-   • **B** ✖ — **Pros:** N/A for OLTP; MFT is file‑centric. **Cons:** Doesn’t model online transactional messaging.
-   • **C** ✔ — **Pros:** Demonstrates failover of a single QM identity; good for resilience drills. **Cons:** Shared storage complexity; not cloud‑native.
-   • **D** ✔ — **Pros:** Shows HA without SAN; quicker failover. **Cons:** Needs 3 nodes; replication overhead.
+**Legend:** ✔ Good fit · △ Conditional/partial fit · ✖ Poor fit
 
-2. **Payment Processing**
-   • **A** △ — **Pros:** Useful for prototyping auth/settlement flows. **Cons:** No availability guarantees.
-   • **B** △ — **Pros:** Good for batch clearing/settlement files. **Cons:** Not for real‑time authorizations.
-   • **C** ✔ — **Pros:** Active/standby models gateway resilience. **Cons:** Storage locking prerequisites.
-   • **D** ✔ — **Pros:** Raft HA for online flows. **Cons:** Requires careful latency budgeting.
+---
 
-3. **Trade Capture & Post‑Trade**
-   • **A** △ — **Pros:** Quick sandbox for event schemas. **Cons:** No resilience.
-   • **B** △ — **Pros:** End‑of‑day file drops. **Cons:** Not event‑rich; limited to file patterns.
-   • **C** ✔ — **Pros:** Good for sustaining order/event queues through failover. **Cons:** Shared storage risk.
-   • **D** ✔ — **Pros:** Teaches quorum HA; resilient during node loss. **Cons:** 3‑node footprint.
+#### 1) Core Banking Transactions
 
-4. **Insurance Policy Admin**
-   • **A** △ — **Pros:** Validate flows between policy/billing. **Cons:** Single QM outages.
-   • **B** △ — **Pros:** Document pack/file exchanges. **Cons:** Not for interactive workflows.
-   • **C** ✔ — **Pros:** Steady back‑office throughput with HA. **Cons:** SAN/NFS dependency.
-   • **D** ✔ — **Pros:** HA without SAN. **Cons:** Replica lag considerations.
+* **A) Standalone** △
 
-5. **Claims Intake & Adjudication**
-   • **A** △ — **Pros:** Prototype intake/queueing. **Cons:** No HA.
-   • **B** △ — **Pros:** Ingest scanned docs/exports. **Cons:** Not for real‑time adjudication steps.
-   • **C** ✔ — **Pros:** Keeps intake live during node failures. **Cons:** Storage lock sensitivity.
-   • **D** ✔ — **Pros:** Active/Replica continuity. **Cons:** Requires 3 containers.
+  * **Pros:** Simple dev/test for message flows.
+  * **Cons:** No HA/DR; not suitable for real SLAs.
+* **B) MFT** ✖
 
-6. **Loan Origination**
-   • **A** △ — **Pros:** Model async bureau calls. **Cons:** Single point of failure.
-   • **B** △ — **Pros:** Batch document/file handoffs. **Cons:** Doesn’t cover online steps.
-   • **C** ✔ — **Pros:** Good failover story. **Cons:** Shared disk ops overhead.
-   • **D** ✔ — **Pros:** Raft‑based HA. **Cons:** Network latency must be low.
+  * **Pros:** —
+  * **Cons:** File‑centric; doesn’t model online transactional messaging.
+* **C) MI + VIP** ✔
 
-7. **Healthcare Eligibility & EDI**
-   • **A** △ — **Pros:** Test X12 message envelopes. **Cons:** Lacks HIPAA‑grade controls.
-   • **B** △ — **Pros:** Suits EDI batch file transfers. **Cons:** Not for real‑time eligibility checks.
-   • **C** ✔ — **Pros:** HA for clearinghouse bridges. **Cons:** Storage design adds ops risk.
-   • **D** ✔ — **Pros:** No SAN; strong availability. **Cons:** Key/cert & PHI hardening not shown.
+  * **Pros:** Demonstrates failover of a single QM identity; good for resilience drills.
+  * **Cons:** Shared storage complexity; not cloud‑native.
+* **D) Native‑HA + VIP** ✔
 
-8. **Order Management**
-   • **A** △ — **Pros:** Easy to demo OMS↔WMS events. **Cons:** No uptime guarantees.
-   • **B** △ — **Pros:** Bulk pick/pack files. **Cons:** Limited near‑real‑time orchestration.
-   • **C** ✔ — **Pros:** Handles spikes with HA. **Cons:** Stateful storage.
-   • **D** ✔ — **Pros:** Raft HA for orchestration. **Cons:** 3‑node overhead.
+  * **Pros:** HA without SAN; quicker failover.
+  * **Cons:** Needs 3 nodes; replication overhead.
 
-9. **Warehouse/Logistics**
-   • **A** △ — **Pros:** Prototype TMS/WMS queues. **Cons:** Single host risk.
-   • **B** △ — **Pros:** Manifest/label batch transfers. **Cons:** Not for event bursts.
-   • **C** ✔ — **Pros:** HA during shift peaks. **Cons:** NFS/SAN dependence.
-   • **D** ✔ — **Pros:** Resilient without SAN. **Cons:** Replica sync costs.
+#### 2) Payment Processing
 
-10. **Airline & Travel**
-    • **A** △ — **Pros:** Mock PNR/SSR events. **Cons:** No HA.
-    • **B** ✖ — **Pros:** — **Cons:** Use messaging, not file transfer, for live inventory.
-    • **C** ✔ — **Pros:** HA for reservation queues. **Cons:** Shared storage caveats.
-    • **D** ✔ — **Pros:** Raft HA for live ops. **Cons:** Needs three nodes.
+* **A) Standalone** △
 
-11. **Telecom Provisioning**
-    • **A** △ — **Pros:** Demo order→activation flows. **Cons:** No fault tolerance.
-    • **B** △ — **Pros:** Nightly config push files. **Cons:** Not for service activation events.
-    • **C** ✔ — **Pros:** Upgrades without downtime. **Cons:** Storage complexity.
-    • **D** ✔ — **Pros:** Node failure tolerance. **Cons:** Network/latency tuning.
+  * **Pros:** Useful for prototyping auth/settlement flows.
+  * **Cons:** No availability guarantees.
+* **B) MFT** △
 
-12. **Energy & Utilities**
-    • **A** △ — **Pros:** Prototype outage events. **Cons:** Not sized for telemetry scale.
-    • **B** △ — **Pros:** Meter read batch files. **Cons:** No real‑time streaming.
-    • **C** △ — **Pros:** HA for control messages. **Cons:** Shared storage; still lacks telemetry gateway.
-    • **D** ✔ — **Pros:** HA for control/market events. **Cons:** For device telemetry, prefer MQTT gateway (not in this lab).
+  * **Pros:** Good for batch clearing/settlement files.
+  * **Cons:** Not for real‑time authorizations.
+* **C) MI + VIP** ✔
 
-13. **Public Sector Casework**
-    • **A** △ — **Pros:** Simple case event queues. **Cons:** Single QM.
-    • **B** △ — **Pros:** Document/file routing. **Cons:** Not interactive.
-    • **C** ✔ — **Pros:** HA for intake/backlogs. **Cons:** Storage lock risks.
-    • **D** ✔ — **Pros:** No SAN HA. **Cons:** Three containers to operate.
+  * **Pros:** Active/standby models gateway resilience.
+  * **Cons:** Storage locking prerequisites.
+* **D) Native‑HA + VIP** ✔
 
-14. **Securities Reference Data**
-    • **A** △ — **Pros:** Prototype pub/sub fan‑out. **Cons:** No HA.
-    • **B** ✖ — **Pros:** — **Cons:** Distribution is event‑driven, not file‑based.
-    • **C** ✔ — **Pros:** Keeps distribution live during failover. **Cons:** Storage complexity.
-    • **D** ✔ — **Pros:** HA without SAN. **Cons:** Needs uniform topic config.
+  * **Pros:** Raft HA for online flows.
+  * **Cons:** Requires careful latency budgeting.
 
-15. **eCommerce Checkout**
-    • **A** △ — **Pros:** Demo async payment/fulfillment. **Cons:** No availability guarantees.
-    • **B** ✖ — **Pros:** — **Cons:** Not suitable for real‑time checkout.
-    • **C** ✔ — **Pros:** HA for order orchestration. **Cons:** Shared storage.
-    • **D** ✔ — **Pros:** Raft HA. **Cons:** Replication overhead under spikes.
+#### 3) Trade Capture & Post‑Trade
 
-16. **ERP Integration**
-    • **A** △ — **Pros:** Good sandbox for ERP adapters. **Cons:** No HA.
-    • **B** △ — **Pros:** Bulk master‑data file moves. **Cons:** Not for event APIs.
-    • **C** ✔ — **Pros:** HA for ERP queues. **Cons:** NFS/SAN requirements.
-    • **D** ✔ — **Pros:** SAN‑less HA. **Cons:** Multi‑node ops learning curve.
+* **A) Standalone** △
 
-17. **IoT/Manufacturing**
-    • **A** △ — **Pros:** Prototype event buffering. **Cons:** Lacks MQTT gateway.
-    • **B** ✖ — **Pros:** — **Cons:** File transfer doesn’t fit device telemetry.
-    • **C** △ — **Pros:** HA for control messages. **Cons:** Still missing MQTT.
-    • **D** △ — **Pros:** HA core; can bridge to MQTT externally. **Cons:** Needs separate Telemetry gateway.
+  * **Pros:** Quick sandbox for event schemas.
+  * **Cons:** No resilience.
+* **B) MFT** △
 
-18. **Batch Offload / ETL**
-    • **A** ✔ — **Pros:** Easy to demo batch queues. **Cons:** No HA if host fails.
-    • **B** ✔ — **Pros:** Native fit for file transfers. **Cons:** Not for real‑time feeds.
-    • **C** ✔ — **Pros:** HA through batch windows. **Cons:** Storage dependency.
-    • **D** ✔ — **Pros:** HA without SAN. **Cons:** Replica overhead even for batch.
+  * **Pros:** End‑of‑day file drops.
+  * **Cons:** Not event‑rich; limited to file patterns.
+* **C) MI + VIP** ✔
 
-19. **Customer Communications**
-    • **A** △ — **Pros:** Proto message→print vendor. **Cons:** No HA.
-    • **B** ✔ — **Pros:** Strong for print/file vendors with audit. **Cons:** Requires MQ Advanced image.
-    • **C** ✔ — **Pros:** HA during statement runs. **Cons:** Storage setup.
-    • **D** ✔ — **Pros:** Raft HA. **Cons:** Operational overhead for a batchy workload.
+  * **Pros:** Sustains order/event queues through failover.
+  * **Cons:** Shared storage risk.
+* **D) Native‑HA + VIP** ✔
 
-20. **Risk & Compliance**
-    • **A** △ — **Pros:** Prototype event capture. **Cons:** No AMS/TLS or HA shown.
-    • **B** △ — **Pros:** Batch evidence/exports. **Cons:** Not for streaming alerts.
-    • **C** ✔ — **Pros:** HA for surveillance/event queues. **Cons:** Shared storage.
-    • **D** ✔ — **Pros:** HA without SAN. **Cons:** Needs security hardening beyond lab.
+  * **Pros:** Teaches quorum HA; resilient during node loss.
+  * **Cons:** 3‑node footprint.
+
+#### 4) Insurance Policy Administration
+
+* **A) Standalone** △
+
+  * **Pros:** Validate flows between policy/billing.
+  * **Cons:** Single‑QM outages.
+* **B) MFT** △
+
+  * **Pros:** Document pack/file exchanges.
+  * **Cons:** Not for interactive workflows.
+* **C) MI + VIP** ✔
+
+  * **Pros:** Steady back‑office throughput with HA.
+  * **Cons:** SAN/NFS dependency.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** HA without SAN.
+  * **Cons:** Replica‑lag considerations.
+
+#### 5) Claims Intake & Adjudication
+
+* **A) Standalone** △
+
+  * **Pros:** Prototype intake/queueing.
+  * **Cons:** No HA.
+* **B) MFT** △
+
+  * **Pros:** Ingest scanned docs/exports.
+  * **Cons:** Not for real‑time adjudication steps.
+* **C) MI + VIP** ✔
+
+  * **Pros:** Keeps intake live during node failures.
+  * **Cons:** Storage‑lock sensitivity.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** Active/Replica continuity.
+  * **Cons:** Requires 3 containers.
+
+#### 6) Loan Origination
+
+* **A) Standalone** △
+
+  * **Pros:** Model async bureau calls.
+  * **Cons:** Single point of failure.
+* **B) MFT** △
+
+  * **Pros:** Batch document/file handoffs.
+  * **Cons:** Doesn’t cover online steps.
+* **C) MI + VIP** ✔
+
+  * **Pros:** Good failover story.
+  * **Cons:** Shared‑disk ops overhead.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** Raft‑based HA.
+  * **Cons:** Network latency must be low.
+
+#### 7) Healthcare Eligibility & EDI
+
+* **A) Standalone** △
+
+  * **Pros:** Test X12 message envelopes.
+  * **Cons:** Lacks HIPAA‑grade controls.
+* **B) MFT** △
+
+  * **Pros:** Suits EDI batch file transfers.
+  * **Cons:** Not for real‑time eligibility checks.
+* **C) MI + VIP** ✔
+
+  * **Pros:** HA for clearinghouse bridges.
+  * **Cons:** Storage design adds ops risk.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** No SAN; strong availability.
+  * **Cons:** Key/cert & PHI hardening not shown in lab.
+
+#### 8) Order Management (Retail/Wholesale)
+
+* **A) Standalone** △
+
+  * **Pros:** Easy to demo OMS↔WMS events.
+  * **Cons:** No uptime guarantees.
+* **B) MFT** △
+
+  * **Pros:** Bulk pick/pack files.
+  * **Cons:** Limited near‑real‑time orchestration.
+* **C) MI + VIP** ✔
+
+  * **Pros:** Handles spikes with HA.
+  * **Cons:** Stateful storage.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** Raft HA for orchestration.
+  * **Cons:** 3‑node overhead.
+
+#### 9) Warehouse & Logistics
+
+* **A) Standalone** △
+
+  * **Pros:** Prototype TMS/WMS queues.
+  * **Cons:** Single‑host risk.
+* **B) MFT** △
+
+  * **Pros:** Manifest/label batch transfers.
+  * **Cons:** Not for event bursts.
+* **C) MI + VIP** ✔
+
+  * **Pros:** HA during shift peaks.
+  * **Cons:** NFS/SAN dependence.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** Resilient without SAN.
+  * **Cons:** Replica‑sync costs.
+
+#### 10) Airline & Travel (PNR/SSR)
+
+* **A) Standalone** △
+
+  * **Pros:** Mock PNR/SSR events.
+  * **Cons:** No HA.
+* **B) MFT** ✖
+
+  * **Pros:** —
+  * **Cons:** Use messaging, not file transfer, for live inventory.
+* **C) MI + VIP** ✔
+
+  * **Pros:** HA for reservation queues.
+  * **Cons:** Shared‑storage caveats.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** Raft HA for live ops.
+  * **Cons:** Needs three nodes.
+
+#### 11) Telecom Provisioning (BSS/OSS)
+
+* **A) Standalone** △
+
+  * **Pros:** Demo order→activation flows.
+  * **Cons:** No fault tolerance.
+* **B) MFT** △
+
+  * **Pros:** Nightly config‑push files.
+  * **Cons:** Not for service‑activation events.
+* **C) MI + VIP** ✔
+
+  * **Pros:** Upgrades without downtime (failover).
+  * **Cons:** Storage complexity.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** Node‑failure tolerance.
+  * **Cons:** Network/latency tuning.
+
+#### 12) Energy & Utilities (metering/events)
+
+* **A) Standalone** △
+
+  * **Pros:** Prototype outage events.
+  * **Cons:** Not sized for telemetry scale.
+* **B) MFT** △
+
+  * **Pros:** Meter‑read batch files.
+  * **Cons:** No real‑time streaming.
+* **C) MI + VIP** △
+
+  * **Pros:** HA for control messages.
+  * **Cons:** Shared storage; still lacks telemetry gateway.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** HA for control/market events.
+  * **Cons:** For device telemetry, prefer MQTT gateway (not in this lab).
+
+#### 13) Public Sector Casework
+
+* **A) Standalone** △
+
+  * **Pros:** Simple case event queues.
+  * **Cons:** Single QM.
+* **B) MFT** △
+
+  * **Pros:** Document/file routing.
+  * **Cons:** Not interactive.
+* **C) MI + VIP** ✔
+
+  * **Pros:** HA for intake/backlogs.
+  * **Cons:** Storage‑lock risks.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** No‑SAN HA.
+  * **Cons:** Three containers to operate.
+
+#### 14) Securities Reference Data (distribution)
+
+* **A) Standalone** △
+
+  * **Pros:** Prototype pub/sub fan‑out.
+  * **Cons:** No HA.
+* **B) MFT** ✖
+
+  * **Pros:** —
+  * **Cons:** Distribution is event‑driven, not file‑based.
+* **C) MI + VIP** ✔
+
+  * **Pros:** Keeps distribution live during failover.
+  * **Cons:** Storage complexity.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** HA without SAN.
+  * **Cons:** Needs uniform topic config.
+
+#### 15) eCommerce Checkout Orchestration
+
+* **A) Standalone** △
+
+  * **Pros:** Demo async payment/fulfillment.
+  * **Cons:** No availability guarantees.
+* **B) MFT** ✖
+
+  * **Pros:** —
+  * **Cons:** Not suitable for real‑time checkout.
+* **C) MI + VIP** ✔
+
+  * **Pros:** HA for order orchestration.
+  * **Cons:** Shared storage.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** Raft HA.
+  * **Cons:** Replication overhead under spikes.
+
+#### 16) ERP Integration
+
+* **A) Standalone** △
+
+  * **Pros:** Good sandbox for ERP adapters.
+  * **Cons:** No HA.
+* **B) MFT** △
+
+  * **Pros:** Bulk master‑data file moves.
+  * **Cons:** Not for event APIs.
+* **C) MI + VIP** ✔
+
+  * **Pros:** HA for ERP queues.
+  * **Cons:** NFS/SAN requirements.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** SAN‑less HA.
+  * **Cons:** Multi‑node ops learning curve.
+
+#### 17) IoT / Manufacturing (shop‑floor)
+
+* **A) Standalone** △
+
+  * **Pros:** Prototype event buffering.
+  * **Cons:** Lacks MQTT gateway.
+* **B) MFT** ✖
+
+  * **Pros:** —
+  * **Cons:** File transfer doesn’t fit device telemetry.
+* **C) MI + VIP** △
+
+  * **Pros:** HA for control messages.
+  * **Cons:** Still missing MQTT.
+* **D) Native‑HA + VIP** △
+
+  * **Pros:** HA core; can bridge to MQTT externally.
+  * **Cons:** Needs separate Telemetry gateway.
+
+#### 18) Batch Offload / ETL
+
+* **A) Standalone** ✔
+
+  * **Pros:** Easy to demo batch queues.
+  * **Cons:** No HA if host fails.
+* **B) MFT** ✔
+
+  * **Pros:** Native fit for file transfers.
+  * **Cons:** Not for real‑time feeds.
+* **C) MI + VIP** ✔
+
+  * **Pros:** HA through batch windows.
+  * **Cons:** Storage dependency.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** HA without SAN.
+  * **Cons:** Replica overhead even for batch.
+
+#### 19) Customer Communications (statements/notices)
+
+* **A) Standalone** △
+
+  * **Pros:** Prototype message→print vendor.
+  * **Cons:** No HA.
+* **B) MFT** ✔
+
+  * **Pros:** Strong for print/file vendors with audit.
+  * **Cons:** Requires MQ Advanced image.
+* **C) MI + VIP** ✔
+
+  * **Pros:** HA during statement runs.
+  * **Cons:** Storage setup.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** Raft HA.
+  * **Cons:** Operational overhead for a batchy workload.
+
+#### 20) Risk & Compliance Events
+
+* **A) Standalone** △
+
+  * **Pros:** Prototype event capture.
+  * **Cons:** No AMS/TLS or HA shown.
+* **B) MFT** △
+
+  * **Pros:** Batch evidence/exports.
+  * **Cons:** Not for streaming alerts.
+* **C) MI + VIP** ✔
+
+  * **Pros:** HA for surveillance/event queues.
+  * **Cons:** Shared storage.
+* **D) Native‑HA + VIP** ✔
+
+  * **Pros:** HA without SAN.
+  * **Cons:** Needs security hardening beyond lab.
 
 ---
 
