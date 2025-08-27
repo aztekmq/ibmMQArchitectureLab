@@ -2,7 +2,7 @@
 
 > **Status:** Lab / Proof-of-Concept • **Scope:** Education & Demos only • **License:** MIT
 
-This repository describes and automates four containerized IBM MQ architectures for **hands-on learning**, prototyping, and demos. They intentionally favor **clarity over hardening** and are **not intended for production**.
+This repository describes and automates five containerized IBM MQ architectures for **hands-on learning**, prototyping, and demos. They intentionally favor **clarity over hardening** and are **not intended for production**.
 
 ---
 
@@ -25,6 +25,9 @@ This repository describes and automates four containerized IBM MQ architectures 
 * [D) Native-HA Queue Manager (Raft) — 3-Node + VIP](#d-nativeha-queue-manager-raft--3node--vip)
 
   * [Scripts (Native-HA + VIP)](#scripts-nativeha--vip)
+* [E) Native-HA Cross-Region Replication (DR)](#e-native-ha-cross-region-replication-dr)
+
+  * [Steps (CRR)](#steps-crr)
 * [Security & Compliance Notice](#security--compliance-notice)
 * [Troubleshooting](#troubleshooting)
 * [Cleanup](#cleanup)
@@ -34,12 +37,13 @@ This repository describes and automates four containerized IBM MQ architectures 
 
 ## Overview
 
-Four designs are provided:
+Five designs are provided:
 
 1. **Standalone QMs** — spin up *N* independent queue managers for API experiments and admin demos.
 2. **MFT Domain** — canonical IBM MQ **Managed File Transfer** setup with Coordination, Command, and two Agents.
 3. **Multi-Instance (MI) QM + VIP** — one queue manager identity with **Active/Standby** containers on shared storage and an optional TCP VIP (HAProxy).
 4. **Native-HA (Raft) QM + VIP** — one queue manager identity distributed across **three containers** using MQ’s built-in Raft replication; optional VIP provides a stable client endpoint.
+5. **Native-HA Cross-Region Replication (DR)** — two Native-HA groups (primary + replica) with asynchronous log shipping for disaster recovery across regions.
 
 All designs run on a single Docker host and default bridge network for simplicity.
 
@@ -117,10 +121,13 @@ make vip-up
 # D) Native-HA (Raft) 3-node + VIP
 chmod +x build_mq_nativeha.sh
 ./build_mq_nativeha.sh
-make vip-up            # starts HAProxy VIP for Native-HA
-./verify_nativeha.sh
-# Optional failover simulation:
-./verify_nativeha.sh --simulate-failover
+ make vip-up            # starts HAProxy VIP for Native-HA
+ ./verify_nativeha.sh
+ # Optional failover simulation:
+ ./verify_nativeha.sh --simulate-failover
+
+# E) Native-HA Cross-Region Replication (DR)
+# Manual: see build_mq_crr.md for detailed steps
 ```
 
 ---
@@ -316,6 +323,36 @@ flowchart LR
 
   classDef nha stroke:#0d6efd,fill:#eef5ff,stroke-width:1.2px
 ```
+
+---
+
+# E) Native-HA Cross-Region Replication (DR)
+
+### Purpose
+
+Demonstrate **cross-region replication (CRR)** for a Native-HA queue manager using two Docker Compose stacks: a **primary** region and a **replica** region.  MQ asynchronously ships Raft log updates from the primary to the replica to enable disaster recovery.
+
+### Scope
+
+* Region A and Region B each host a three-node Native-HA group for the same queue manager identity.
+* Replication is **asynchronous**; only Region A serves clients until a planned or unplanned failover.
+* Optional HAProxy VIPs can front the active instance in each region.
+
+### Caveats (container-based)
+
+* Requires IBM MQ **9.4** or later container image.
+* CRR adds network and storage overhead; promotion requires the replica to be fully synchronized.
+* This lab runs all nodes on one host by default—adjust for true multi-host or multi-region tests.
+
+#### Steps (CRR)
+
+1. Create separate `primary/` and `dr/` directories with Docker Compose files (see `build_mq_crr.md`).
+2. Bring up both stacks with `docker compose up -d`.
+3. Inside a primary node, register replicas:
+   ```bash
+   docker exec -it qmha-a bash -lc "mqcli crtmqha --dr-replica qmha-dr-a:1500 qmha-dr-b:1500 qmha-dr-c:1500"
+   ```
+4. Verify roles with `dspmq` and test message flow.  Simulate failover by stopping Region A and promoting Region B (`mqcli rdqm --promote`).
 
 ---
 
