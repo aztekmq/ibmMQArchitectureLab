@@ -344,6 +344,54 @@ Demonstrate **cross-region replication (CRR)** for a Native-HA queue manager usi
 * CRR adds network and storage overhead; promotion requires the replica to be fully synchronized.
 * This lab runs all nodes on one host by default—adjust for true multi-host or multi-region tests.
 
+```mermaid
+flowchart LR
+  Clients((Clients)) --> VIPA[[Region A VIP :14180]]
+  Clients -.DR failover.-> VIPB[[Region B VIP :14180]]
+
+  subgraph RegionA["Region A (Primary)"]
+    direction LR
+    A1["qmha-a : QMHA\\nROLE: Active/Replica\\nListener 1414"]:::nha
+    A2["qmha-b : QMHA\\nROLE: Replica\\nNo listener"]:::nha
+    A3["qmha-c : QMHA\\nROLE: Replica\\nNo listener"]:::nha
+  end
+
+  subgraph RegionB["Region B (Replica)"]
+    direction LR
+    B1["qmha-dr-a : QMHA\\nROLE: Replica\\nNo listener"]:::nha
+    B2["qmha-dr-b : QMHA\\nROLE: Replica\\nNo listener"]:::nha
+    B3["qmha-dr-c : QMHA\\nROLE: Replica\\nNo listener"]:::nha
+  end
+
+  VIPA -->|tcp| A1
+  VIPA -.failover.-> A2
+  VIPA -.failover.-> A3
+  VIPB -->|tcp| B1
+  VIPB -.failover.-> B2
+  VIPB -.failover.-> B3
+
+  %% Raft replication within regions
+  A1 <-.Raft.-> A2
+  A1 <-.Raft.-> A3
+  A2 <-.Raft.-> A3
+  B1 <-.Raft.-> B2
+  B1 <-.Raft.-> B3
+  B2 <-.Raft.-> B3
+
+  %% Cross-region replication
+  A1 -.CRR (async).-> B1
+  A1 -.-> B2
+  A1 -.-> B3
+  A2 -.-> B1
+  A2 -.-> B2
+  A2 -.-> B3
+  A3 -.-> B1
+  A3 -.-> B2
+  A3 -.-> B3
+
+  classDef nha stroke:#0d6efd,fill:#eef5ff,stroke-width:1.2px
+```
+
 #### Steps (CRR)
 
 1. Create separate `primary/` and `dr/` directories with Docker Compose files (see `build_mq_crr.md`).
