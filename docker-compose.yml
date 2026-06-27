@@ -44,25 +44,3 @@ services:
       retries: 5
     restart: unless-stopped
  
-  qm3:
-    image: ibmcom/mq
-    container_name: qm3
-    environment:
-      - LICENSE=accept
-      - MQ_QMGR_NAME=QM3
-      - MQ_APP_PASSWORD=passw0rd
-      - MQ_ENABLE_METRICS=true
-      - MQ_ENABLE_ADMIN_WEB=true
-    ports:
-      - "1417:1414"
-      - "9446:9443"
-      - "9452:9449"
-    volumes:
-      - ./data/QM3:/mnt/mqm
-    healthcheck:
-      test: ["CMD", "mqcli", "status"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-    restart: unless-stopped
- 
